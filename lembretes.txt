@@ -1,0 +1,24 @@
+Signals and Slots
+
+Criando um signal ou slot
+No .h (header) da sua classe:
+
+signals:
+  void MySignal();
+  void MySignal(int); //Passando um parametro int
+
+ou
+
+public slots:
+    void mySlot();
+    void onNumberChanged(int); //Slot recebendo um parametro int
+
+No .cpp (Implementacao) colocar
+
+emit MySignal(); //Vai disparar o sinal para todos os slots conectados à MySignal
+emit MySitnal(1); //Disparando passando um parametro int
+
+
+================================================================================
+Converter de int para String
+QString::number(numero);

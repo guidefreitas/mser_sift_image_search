@@ -1,0 +1,310 @@
+#include "imageprocessor.h"
+#include <QDebug>
+#include "opencv2/opencv.hpp"
+#include "opencv2/video/video.hpp"
+#include "opencv2/video/tracking.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include <opencv2/highgui/highgui.hpp>
+#include "opencv2/video/background_segm.hpp"
+#include "opencv2/features2d/features2d.hpp"
+#include <vector>
+
+ImageProcessor::ImageProcessor(QObject *parent) :
+    QObject(parent)
+{
+}
+
+
+void ImageProcessor::DoSetup(QThread &cThread){
+    connect(&cThread, SIGNAL(started()), this, SLOT(DoWork()));
+    Stop = false;
+    util = new Util;
+}
+
+bool ImageProcessor::Interseccao(Mat img1, Mat img2){
+    if(img1.empty() || img2.empty())
+        return false;
+
+    img1 = img1 >= 1;
+    img2 = img2 >= 1;
+
+    for(int row=0;row<img1.rows-1;row++){
+        for(int col=0;col<img1.cols-1;col++){
+            if(img1.at<bool>(row,col) == true){
+                if(img2.at<bool>(row,col) == true){
+                    qDebug() << "Tem interseccao:";
+                    qDebug() << "v1: " << img1.at<bool>(row,col);
+                    qDebug() << "v2: " << img2.at<bool>(row,col);
+                    return true;
+                }
+            }
+        }
+    }
+
+}
+
+void ImageProcessor::DoWork(){
+    qDebug() << "Iniciando thread";
+    VideoCapture cap(filePath->toStdString());
+    Mat foreground,image,frameAnt;
+
+
+    int fps = (int)cap.get(CV_CAP_PROP_FPS);
+    qDebug() << "FPS: " << fps;
+
+    qDebug() << "Carregando imagem de mascara";
+
+    Mat mask;
+    mask = imread("/Users/guilherme/GUILHERME/MESTRADO/UDESC/PMI/Artigo_Transito/areainteresse3.png", CV_LOAD_IMAGE_COLOR);
+
+    if(!mask.data){
+        qDebug() << "Erro ao ler mascara";
+        return;
+    }else{
+        qDebug() << "Mascara ";
+        qDebug() << "width: " << mask.size().width;
+        qDebug() << "height: " << mask.size().height;
+    }
+
+
+    threshold(mask,mask,1,255,THRESH_BINARY);
+    mask.inv();
+
+    /*
+    vector<Point> sensor1;
+    Point s1p1,s1p2,s1p3,s1p4;
+    Rect retSensor1;
+    s1p1.x = 350;
+    s1p1.y = 220; //259
+    sensor1.push_back(s1p1);
+    s1p2.x = 421;
+    s1p2.y = 300; //270
+    sensor1.push_back(s1p2);
+    s1p3.x = 396;
+    s1p3.y = 210; //235
+    sensor1.push_back(s1p3);
+    s1p4.x = 444;
+    s1p4.y = 260; //244
+    sensor1.push_back(s1p4);
+
+
+    retSensor1 = boundingRect(Mat(sensor1));
+    */
+
+    BackgroundSubtractorMOG2 mog;
+    while(cap.grab())
+    {
+        QMutex mutex;
+        mutex.lock();
+        if(Stop){
+            break;
+        }
+        mutex.unlock();
+
+        Mat frame;
+        cap >> frame;
+        if(frame.empty()){
+            break;
+        }
+
+
+        image = frame.clone();
+
+        frame =  frame - mask;
+        frameAnt = image;
+
+        mog(frame,foreground,-1);
+
+        /*
+        edges = foreground.clone();
+        dilate(edges,edges,Mat());
+        erode(edges,edges,Mat());
+        cvtColor(edges, edges, CV_GRAY2RGB);
+        image = image + edges;
+        */
+
+        threshold(foreground,foreground,64,255,THRESH_BINARY);
+        medianBlur(foreground,foreground,3);
+        //erode(foreground,foreground,Mat());
+        //dilate(foreground,foreground,Mat());
+
+
+        element = getStructuringElement(CV_SHAPE_ELLIPSE,Size(15,15));
+        morphologyEx(foreground,foreground,MORPH_DILATE,element);
+
+        element = getStructuringElement(CV_SHAPE_ELLIPSE,Size(10,10));
+        morphologyEx(foreground,foreground,MORPH_ERODE,element);
+
+        Mat tmp;
+        element = getStructuringElement(CV_SHAPE_ELLIPSE,Size(6,6));
+        morphologyEx(foreground,tmp,MORPH_ERODE,element);
+
+        element = getStructuringElement(CV_SHAPE_CROSS,Size(2,2));
+        morphologyEx(foreground,tmp,MORPH_ERODE,element);
+
+
+        //element = getStructuringElement(CV_SHAPE_CROSS,Size(4,4));
+        //morphologyEx(foreground,foreground,MORPH_GRADIENT,element);
+
+
+        vector<vector<Point> > contours;
+        Mat foregroundTmp = foreground.clone();
+        findContours(foregroundTmp, contours, CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
+        Mat result(foregroundTmp.size(),CV_8U,cv::Scalar(0));
+        //drawContours(result, contours, -1,Scalar(255),2);
+
+        foreach(vector<Point> pontos, contours){
+            Rect r0= boundingRect(Mat(pontos));
+
+            if(r0.area() > 2000 && r0.area() < 5000){
+                Mat imageRectangle(foregroundTmp.size(),CV_8U,cv::Scalar(0));
+                rectangle(imageRectangle,r0,Scalar(255),CV_FILLED);
+                //char strArea[10] ;
+                //sprintf(strArea, "%d ",r0.area() ) ;
+                //putText( result, strArea, pontos[0], CV_FONT_VECTOR0, 0.6,Scalar(255),2 );
+
+                result = result + imageRectangle;
+
+                cvtColor(imageRectangleClone, imageRectangleClone, CV_GRAY2RGB);
+                QImage imagemInfracao = util->IplImage2QImage(new IplImage(imageRectangleClone));
+                infracao(imagemInfracao);
+
+                /*
+                if(!Interseccao(retInfraFrameAnt, imageRectangle)){
+                    Mat imageRectangleClone(imageRectangle.size(),CV_8U,cv::Scalar(0));
+                    imageRectangleClone = imageRectangle.clone();
+                    cvtColor(imageRectangleClone, imageRectangleClone, CV_GRAY2RGB);
+                    imageRectangleClone = image - imageRectangleClone;
+                    QImage imagemInfracao = util->IplImage2QImage(new IplImage(imageRectangleClone));
+                    infracao(imagemInfracao);
+                }
+
+                retInfraFrameAnt = imageRectangle.clone();
+                */
+            }
+            /*
+            bool inserir = true;
+
+            foreach(Point ponto, pontos){
+                if(!retSensor1.contains(ponto))
+                    inserir = false;
+            }
+
+            if(inserir){
+                if(r0.area() > 250){
+                    rectangle(result,r0,Scalar(255),2);
+                }
+            }
+            */
+            /*
+            vector<Point> poly;
+            approxPolyDP(Mat(p),poly,10,true);
+
+            vector<Point>::const_iterator itp = poly.begin();
+            while(itp!=(poly.end()-1)){
+                line(result,*itp,*(itp+1),Scalar(255),2);
+                ++itp;
+            }
+            line(result,*(poly.begin()),*(poly.end()-1),Scalar(255),2);
+            */
+        }
+
+        //rectangle(result,retSensor1,Scalar(50), 2);
+
+        //vector<Point2f> corners;
+        //goodFeaturesToTrack();
+
+        cvtColor(result, result, CV_GRAY2RGB);
+        result = image + result;
+
+        /*
+        foreground = foreground >= 1;
+        foreground = foreground == false;
+        cvtColor(foreground, foreground, CV_GRAY2RGB);
+        foreground = image - foreground;
+        cvtColor(foreground, foreground, CV_RGB2GRAY);
+        vector<Point2f> cornersA, cornersB;
+        goodFeaturesToTrack(foreground,cornersA,200,0.10,10);
+        cornerSubPix(foreground,cornersA,Size(10,10),Size(-1,-1),TermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS,20,0.03));
+
+        if(!foregroundAnt.empty()){
+            foregroundAnt = foreground.clone();
+        }
+        */
+        /*
+        qDebug() << "Iniciando Optical Flow";
+        vector<uchar> features_found;
+        vector<float> features_error;
+
+        Mat pyrA, pyrB;
+        buildPyramid(foregroundAnt,pyrA,20);
+        buildPyramid(foreground,pyrB,20);
+
+        calcOpticalFlowPyrLK(pyrA,pyrB,cornersA,cornersB,features_found,features_error,Size(10,10),5,TermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS,20,.3));
+        qDebug() << "Optical Flow finalizado";
+        //cvtColor(foreground, foreground, CV_GRAY2RGB);
+        //foreground = image + foreground;
+        */
+        //foregroundAnt = foreground.clone();
+
+        if(!frameAnt.empty()){
+
+        }
+
+        /*
+        if(!frameAnt.empty()){
+            Mat tmp = frame.clone();
+            frame = frameAnt - frame;
+            subtract(frame,mask,frame);
+            //frame = mask - frame;
+            frameAnt = tmp.clone();
+        }else{
+            frameAnt = frame.clone();
+        }
+
+        cvtColor(frame, edges, CV_BGR2GRAY);
+
+        //Fun
+        //Smooth(edges, edges, CV_GAUSSIAN, 7, 7, 0, 0);
+        GaussianBlur(edges, edges, Size(7,7), 1.5, 1.5);
+        threshold(edges,edges,1,255,THRESH_BINARY);
+        //Canny(edges, edges, 0, 50, 3);
+
+        element = getStructuringElement(CV_SHAPE_CROSS,Size(12,12));
+        morphologyEx(edges,edges,MORPH_DILATE,element);
+
+        element = getStructuringElement(CV_SHAPE_CROSS,Size(2,2));
+        morphologyEx(edges,edges,MORPH_CLOSE,element);
+
+        element = getStructuringElement(CV_SHAPE_CROSS,Size(14,14));
+        morphologyEx(edges,edges,MORPH_OPEN,element);
+
+        //element = getStructuringElement(CV_SHAPE_CROSS,Size(6,6));
+        //morphologyEx(edges,edges,MORPH_DILATE,element);
+
+
+        //element = getStructuringElement(CV_SHAPE_CROSS,Size(20,20));
+        //morphologyEx(edges,edges,MORPH_ERODE,element);
+
+
+
+        Canny(edges, edges, 0, 50, 3);
+
+        element = getStructuringElement(CV_SHAPE_CROSS,Size(2,2));
+        morphologyEx(edges,edges,MORPH_DILATE,element);
+
+        */
+
+
+
+        QImage originalFrame = util->IplImage2QImage(new IplImage(image));
+        emit captureOriginalFrame(originalFrame);
+
+        QImage qFrame = util->IplImage2QImage(new IplImage(result));
+        emit captureFrame(qFrame);
+
+        //sleep(1);
+
+
+    }
+}
