@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QtCore>
-#include <QDebug>
 #include <QImage>
 #include <QThread>
 #include <QMessageBox>
@@ -55,9 +54,7 @@ void MainWindow::on_pushButton_clicked()
     cThread = new QThread;
     ip->DoSetup(*cThread);
     ip->moveToThread(cThread);
-
-
-    ip->trainningDirPath = new QString(ui->tbTrainningPath->text());
+    ip->trainningDirPath = ui->tbTrainningPath->text();
     cThread->start();
 }
 
@@ -102,7 +99,7 @@ void MainWindow::frameOriginalCaptured(QImage img){
 
 void MainWindow::on_pushButton_3_clicked()
 {
-    QString file = QFileDialog::getOpenFileName(this, tr("Open Image"), "/", tr("Image Files (*.jpg *.png *.tiff)"));
+    QString file = QFileDialog::getOpenFileName(this, tr("Open Image"), "/", tr("Image Files (*.jpg *.png *.tiff *.pgm)"));
     ui->tbCaminhoArquivo->setText(file);
 
 }
@@ -137,8 +134,8 @@ void MainWindow::on_btSearchDatabase_clicked()
     QImage imgSearch(ui->tbCaminhoArquivo->text());
     ui->lblVideoOriginal->setPixmap(QPixmap::fromImage(imgSearch).scaled(210,160, Qt::KeepAspectRatio));
     ui->listWidget->clear();
-
-    ip->searchImgFilePath = &ui->tbCaminhoArquivo->text();
+    QString pathFile = ui->tbCaminhoArquivo->text();
+    ip->searchImgFilePath = pathFile;
     ip->Search();
 
     /*

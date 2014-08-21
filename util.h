@@ -2,7 +2,6 @@
 #define UTIL_H
 
 #include <QtCore>
-#include <QDebug>
 #include <QImage>
 #include <opencv2/opencv.hpp>
 

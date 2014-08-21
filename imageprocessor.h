@@ -2,17 +2,19 @@
 #define IMAGEPROCESSOR_H
 
 #include <QObject>
-#include <QDebug>
 #include <QThread>
 #include <QImage>
+#include <QList>
 #include <opencv2/opencv.hpp>
 #include "util.h"
+#include "OpenCL/opencl.h"
 
 using namespace cv;
 
 struct meta_descriptor {
     QString filePath;
     cv::Mat descriptor;
+    std::vector<cv::KeyPoint> keypoints;
 };
 
 class ImageProcessor : public QObject
@@ -20,13 +22,15 @@ class ImageProcessor : public QObject
     Q_OBJECT
 public:
     explicit ImageProcessor(QObject *parent = 0);
+    QList<QString> getFilesToProcess(QString sDir);
+    meta_descriptor ExtractDescriptorImage(QString sImagePath);
     void DoSetup(QThread &cThread);
     void ClearTranningDatabase();
     void Search();
     QList<meta_descriptor> imgDescDatabase;
     QMap<int, QString> searchResult;
-    QString *searchImgFilePath;
-    QString *trainningDirPath;
+    QString searchImgFilePath;
+    QString trainningDirPath;
     bool Stop;
     Util *util;
     bool databaseTrainningComplete;
@@ -37,7 +41,7 @@ private:
     bool Interseccao(Mat img1, Mat img2);
     void RecurseDirectory(const QString& sDir);
     void TrainDatabase(QString sDirPath);
-    cv::Mat ExtractDescriptorImage(QString sImagePath);
+
 
 
 signals:

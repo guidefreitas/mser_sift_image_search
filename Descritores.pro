@@ -25,23 +25,34 @@ HEADERS  += mainwindow.h \
 FORMS    += mainwindow.ui
 
 
-macx: LIBS += -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_core\
-              -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_contrib\
-              -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_imgproc\
-              -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_ml\
-              -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_objdetect\
-              -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_video\
-              -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_photo\
-              -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_ts\
-              -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_highgui\
-              -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_features2d\
-              -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_nonfree\
-              -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_legacy\
-              -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_flann\
-              -L$$PWD/../../../../../../../../usr/local/lib/ -lopencv_ts\
+LIBS += -L/usr/local/lib/ -lopencv_core\
+              -L/usr/local/lib/ -lopencv_contrib\
+              -L/usr/local/lib/ -lopencv_imgproc\
+              -L/usr/local/lib/ -lopencv_ml\
+              -L/usr/local/lib/ -lopencv_objdetect\
+              -L/usr/local/lib/ -lopencv_video\
+              -L/usr/local/lib/ -lopencv_photo\
+              -L/usr/local/lib/ -lopencv_ts\
+              -L/usr/local/lib/ -lopencv_highgui\
+              -L/usr/local/lib/ -lopencv_features2d\
+              -L/usr/local/lib/ -lopencv_nonfree\
+              -L/usr/local/lib/ -lopencv_legacy\
+              -L/usr/local/lib/ -lopencv_flann\
+              -L/usr/local/lib/ -lopencv_ts\
 
-INCLUDEPATH += $$PWD/../../../../../../../../usr/local/include
-DEPENDPATH += $$PWD/../../../../../../../../usr/local/include
+INCLUDEPATH += /usr/local/include
+DEPENDPATH += /usr/local/include
+
+#QMAKE_CC = gcc-4.7
+#QMAKE_CXX = g++-4.7
+
+QMAKE_CXXFLAGS += -fopenmp
+QMAKE_LFLAGS += -fopenmp
+
+QMAKE_CFLAGS_DEBUG += -fopenmp
+QMAKE_CFLAGS_RELEASE += -fopenmp
+
+
 
 #INCLUDEPATH += /usr/local/include/opencv2
 #DEPENDPATH += /usr/local/include/opencv2

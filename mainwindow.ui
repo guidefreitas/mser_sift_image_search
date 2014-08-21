@@ -24,7 +24,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Iniciar Treinamento</string>
+     <string>Extrair Características</string>
     </property>
    </widget>
    <widget class="QLineEdit" name="tbCaminhoArquivo">
@@ -179,7 +179,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Limpar Treinamento</string>
+     <string>Limpar Base</string>
     </property>
    </widget>
    <widget class="QLabel" name="label">
